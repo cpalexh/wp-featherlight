@@ -1,3 +1,9 @@
+## 1.3.5
+This is a security release.
+
+Here's a full list of what's changed since the last release:
+- Security: Fixed an authenticated (Contributor+) stored DOM-based XSS in the bundled Featherlight library (CVE-2024-5667). Image URLs are now assigned as attribute values instead of being concatenated into markup, the jQuery selector filter no longer parses input as HTML, and HTML lightbox content is sanitized to strip inline event handlers, `javascript:` URLs and `<script>` tags.
+
 ## 1.3.4
 This is a maintenance release.
 

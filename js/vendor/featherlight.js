@@ -362,7 +362,7 @@
 			jquery: {
 				regex: /^[#.]\w/,         /* Anything that starts with a class name or identifiers */
 				test: function(elem)    { return elem instanceof $ && elem; },
-				process: function(elem) { return this.persist !== false ? $(elem) : $(elem).clone(true); }
+				process: function(elem) { var $elem = $(document).find(elem); return this.persist !== false ? $elem : $elem.clone(true); }
 			},
 			image: {
 				regex: /\.(png|jpg|jpeg|gif|tiff?|bmp|svg)(\?\S*)?$/i,
@@ -370,7 +370,7 @@
 					var self = this,
 						deferred = $.Deferred(),
 						img = new Image(),
-						$img = $('<img src="'+url+'" alt="" class="'+self.namespace+'-image" />');
+						$img = $('<img alt="" class="'+self.namespace+'-image" />').attr( 'src', url );
 					img.onload  = function() {
 						/* Store naturalWidth & height for IE8 */
 						$img.naturalWidth = img.width; $img.naturalHeight = img.height;
@@ -383,7 +383,24 @@
 			},
 			html: {
 				regex: /^\s*<[\w!][^<]*>/, /* Anything that starts with some kind of valid tag */
-				process: function(html) { return $(html); }
+				process: function(html) {
+				/* Sanitize untrusted markup: drop <script>, inline event handlers and javascript: URLs to prevent DOM XSS (CVE-2024-5667). */
+				var $html = $($.parseHTML('' + html, document, false));
+				$html.find('*').addBack().each(function() {
+					if (!this.attributes) {
+						return;
+					}
+					for (var i = this.attributes.length - 1; i >= 0; i--) {
+						var attrName  = this.attributes[i].name,
+							lowerName = attrName.toLowerCase(),
+							value     = ('' + this.attributes[i].value).replace(/[\s ]+/g, '').toLowerCase();
+						if (0 === lowerName.indexOf('on') || (('href' === lowerName || 'src' === lowerName || 'xlink:href' === lowerName) && 0 === value.indexOf('javascript:'))) {
+							this.removeAttribute(attrName);
+						}
+					}
+				});
+				return $html;
+			}
 			},
 			ajax: {
 				regex: /./,            /* At this point, any content is assumed to be an URL */
