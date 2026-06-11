@@ -121,7 +121,22 @@
 
 			if ( 0 !== caption.length ) {
 				var $captionElm = $( '<div class="caption">' ).appendTo( object.find( '.featherlight-content' ) );
-				$captionElm[0].innerHTML = caption.html();
+				/* Sanitize caption markup before insertion: drop inline event handlers, javascript: URLs and <script> to prevent DOM XSS (CVE-2024-5667). */
+			var $captionHtml = $( $.parseHTML( '' + caption.html(), document, false ) );
+			$captionHtml.find( '*' ).addBack().each( function() {
+				if ( ! this.attributes ) {
+					return;
+				}
+				for ( var i = this.attributes.length - 1; i >= 0; i-- ) {
+					var attrName  = this.attributes[ i ].name,
+						lowerName = attrName.toLowerCase(),
+						value     = ( '' + this.attributes[ i ].value ).replace( /[\s ]+/g, '' ).toLowerCase();
+					if ( 0 === lowerName.indexOf( 'on' ) || ( ( 'href' === lowerName || 'src' === lowerName || 'xlink:href' === lowerName ) && 0 === value.indexOf( 'javascript:' ) ) ) {
+						this.removeAttribute( attrName );
+					}
+				}
+			});
+			$captionElm.append( $captionHtml );
 			}
 		};
 	}
